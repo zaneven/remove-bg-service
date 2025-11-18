@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>快速抠图前端</title>
+  <style>
+    :root { --bg:#0b0c10; --card:#111218; --muted:#a9b1bd; --text:#e6edf3; --brand:#6ea8fe; --accent:#10b981; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto; background: var(--bg); color: var(--text); }
+    .container { max-width: 1100px; margin: 0 auto; padding: 24px; }
+    header { display:flex; align-items:center; justify-content:space-between; margin-bottom: 20px; }
+    header h1 { font-size: 22px; margin:0; }
+    .grid { display:grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .card { background: var(--card); border: 1px solid #1f2330; border-radius: 12px; padding: 16px; }
+    .card h2 { margin:0 0 12px; font-size:16px; color:#c9d1d9; }
+    .row { display:flex; gap:8px; align-items:center; margin-top:12px; flex-wrap: wrap; }
+    .uploader { border:2px dashed #2a2f3a; border-radius:12px; padding:24px; text-align:center; cursor:pointer; }
+    .uploader:hover { border-color:#3b4253; }
+    .uploader input { display:none; }
+    .select, .text { background:#0b0d13; border:1px solid #232838; color: var(--text); border-radius:8px; padding:8px 10px; }
+    .text { width: 220px; }
+    .btn { appearance:none; border:none; border-radius:8px; padding:10px 14px; font-weight:600; cursor:pointer; transition: transform .05s ease; }
+    .btn-primary { background: var(--brand); color:#0b0c10; }
+    .btn:active { transform: translateY(1px); }
+    .preview-wrap { background: repeating-conic-gradient(#444 0% 25%, transparent 0% 50%) 50% / 20px 20px; border-radius: 12px; overflow:hidden; min-height: 260px; display:flex; align-items:center; justify-content:center; }
+    img.preview { max-width: 100%; height:auto; display:block; }
+    .meta { font-size:12px; color: var(--muted); margin-top:8px; }
+    .status { font-size:13px; margin-top:8px; color: var(--muted); }
+    .space { justify-content: space-between; }
+    .link { color: var(--accent); text-decoration:none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>快速抠图前端</h1>
+      <div class="row">
+        <span class="meta">接口地址</span>
+        <input id="api" class="text" type="text" placeholder="https://api.example.com" />
+        <button id="save" class="btn">保存</button>
+      </div>
+    </header>
+    <div class="grid">
+      <div class="card">
+        <h2>选择图片</h2>
+        <label class="uploader" id="drop">
+          <input id="file" type="file" accept="image/*" />
+          <div>拖拽图片到此或点击选择</div>
+          <div class="meta" id="meta"></div>
+        </label>
+        <div class="row">
+          <label>输出格式</label>
+          <select id="fmt" class="select"><option value="png">PNG(透明)</option><option value="jpeg">JPEG(合成背景)</option></select>
+          <input id="bg" class="text" type="text" value="#FFFFFF" placeholder="#RRGGBB" />
+          <button id="run" class="btn btn-primary">开始抠图</button>
+        </div>
+        <div class="status" id="status"></div>
+        <div class="meta">建议上传清晰主体图片，支持常见格式</div>
+      </div>
+      <div class="card">
+        <h2>预览</h2>
+        <div class="preview-wrap">
+          <img id="inPreview" class="preview" alt="原图预览" />
+        </div>
+        <div class="row space" style="margin-top:12px">
+          <span class="meta">原图预览</span>
+        </div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <h2>输出结果</h2>
+      <div class="preview-wrap">
+        <img id="outPreview" class="preview" alt="输出预览" />
+      </div>
+      <div class="row space" style="margin-top:12px">
+        <span class="meta" id="outMeta"></span>
+        <a id="download" class="link" href="#" download>下载结果</a>
+      </div>
+    </div>
+  </div>
+  <script>
+    const LS_KEY = 'api_base';
+    const apiEl = document.getElementById('api');
+    const saveEl = document.getElementById('save');
+    const fileEl = document.getElementById('file');
+    const metaEl = document.getElementById('meta');
+    const inPreview = document.getElementById('inPreview');
+    const outPreview = document.getElementById('outPreview');
+    const outMeta = document.getElementById('outMeta');
+    const downloadEl = document.getElementById('download');
+    const fmtEl = document.getElementById('fmt');
+    const bgEl = document.getElementById('bg');
+    const statusEl = document.getElementById('status');
+    const drop = document.getElementById('drop');
+    function getDefaultApi(){ try { return location.origin; } catch(e){ return ''; } }
+    function getApi(){ return apiEl.value.trim() || getDefaultApi(); }
+    function human(n){ if(n<1024) return n+' B'; if(n<1024*1024) return (n/1024).toFixed(1)+' KB'; return (n/1024/1024).toFixed(1)+' MB'; }
+    function resetOut(){ outPreview.src=''; outMeta.textContent=''; downloadEl.href='#'; }
+    function setStatus(t){ statusEl.textContent=t; }
+    function onFile(f){ if(!f) return; const url = URL.createObjectURL(f); inPreview.src = url; metaEl.textContent = f.name + ' · ' + human(f.size); resetOut(); }
+    function loadApi(){ const saved = localStorage.getItem(LS_KEY); apiEl.value = saved || getDefaultApi(); }
+    function saveApi(){ localStorage.setItem(LS_KEY, apiEl.value.trim()); }
+    fileEl.addEventListener('change', e => onFile(e.target.files[0]));
+    drop.addEventListener('dragover', e => { e.preventDefault(); drop.style.borderColor = '#6ea8fe'; });
+    drop.addEventListener('dragleave', e => { drop.style.borderColor = '#2a2f3a'; });
+    drop.addEventListener('drop', e => { e.preventDefault(); drop.style.borderColor = '#2a2f3a'; const f = e.dataTransfer.files[0]; if(f){ fileEl.files = e.dataTransfer.files; onFile(f); }});
+    fmtEl.addEventListener('change', () => { const v = fmtEl.value; bgEl.disabled = v !== 'jpeg'; });
+    bgEl.disabled = fmtEl.value !== 'jpeg';
+    saveEl.addEventListener('click', () => { saveApi(); setStatus('接口地址已保存'); });
+    async function run(){ const f = fileEl.files[0]; if(!f){ setStatus('请先选择图片文件'); return; } const base = getApi(); if(!base){ setStatus('请设置接口地址'); return; } setStatus('处理中...'); const fd = new FormData(); fd.append('file', f); const q = new URLSearchParams({ format: fmtEl.value, background: bgEl.value }); const url = base.replace(/\/$/, '') + '/remove-bg?' + q.toString(); const resp = await fetch(url, { method: 'POST', body: fd }); if(!resp.ok){ const text = await resp.text(); setStatus('错误: ' + resp.status + ' ' + text); return; } const blob = await resp.blob(); const outUrl = URL.createObjectURL(blob); outPreview.src = outUrl; downloadEl.href = outUrl; downloadEl.download = fmtEl.value === 'png' ? 'output.png' : 'output.jpg'; setStatus('完成'); const sz = blob.size; outMeta.textContent = '大小 ' + human(sz) + ' · 类型 ' + blob.type; }
+    document.getElementById('run').addEventListener('click', run);
+    loadApi();
+  </script>
+</body>
+</html>
