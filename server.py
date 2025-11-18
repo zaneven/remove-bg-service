@@ -10,7 +10,7 @@ from PIL import Image
 
 app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
-_session = new_session("birefnet-general")
+_session = new_session("isnet-general-use")
 
 def _hex_to_rgb(value: str):
     m = re.fullmatch(r"#?([0-9a-fA-F]{6})", value)
